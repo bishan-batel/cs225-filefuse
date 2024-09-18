@@ -19,33 +19,33 @@ int fuse_file_append(const char *file_name, FILE *output_file) {
   }
 
   /* Filename */
-  fwrite(file_name, sizeof(char), 1 + strlen(file_name), output_file);
+  fwrite(file_name, 1, 1 + strlen(file_name), output_file);
 
   input_file = fopen(file_name, "rb");
   if (!input_file) {
     return E_BAD_SOURCE;
   }
 
-  input_buffer = calloc(buffer_length, sizeof(char));
+  input_buffer = calloc(buffer_length, 1);
   if (!input_buffer) {
     fclose(input_file);
     return E_NO_MEMORY;
   }
 
   while (!feof(input_file)) {
-    position += fread(input_buffer + position, sizeof(char),
-                      (buffer_length - position), input_file);
+    position += fread(input_buffer + position, 1, (buffer_length - position),
+                      input_file);
 
     /* so pissed rn, yesterday wasnt working cause i think runing xxd fucked up
      one of the files and it was comparing my output with a fucked up
      testX_expected_output */
 
-    /* position += fread(input_buffer + position, sizeof(char), */
+    /* position += fread(input_buffer + position, 1, */
     /*                   (buffer_length - position), input_file); */
 
     if (position >= buffer_length) {
       buffer_length <<= 1;
-      input_buffer = realloc(input_buffer, sizeof(char) * buffer_length);
+      input_buffer = realloc(input_buffer, 1 * buffer_length);
       if (input_buffer == NULL) {
         fclose(input_file);
         return E_NO_MEMORY;
@@ -55,7 +55,7 @@ int fuse_file_append(const char *file_name, FILE *output_file) {
   fclose(input_file);
 
   fwrite(&position, sizeof(position), 1, output_file);
-  fwrite(input_buffer, sizeof(char), position, output_file);
+  fwrite(input_buffer, 1, position, output_file);
 
   free(input_buffer);
   return 0;
@@ -84,9 +84,9 @@ int fuse(char const **filenames, int num_files, char const *output) {
 /* {FNAME}\0{LENGTH}{data...} */
 
 int unfuse_file(FILE *fused_file) {
-  char unfused_file_name[256] = "\0";
+  char unfused_file_name[256] = {"\0"};
   FILE *unfused_file = NULL;
-  char *buffer = NULL;
+  void *buffer = NULL;
   int file_size = 0;
   int i = 0;
 
@@ -94,39 +94,40 @@ int unfuse_file(FILE *fused_file) {
     return E_BAD_SOURCE;
   }
 
-  while ((unfused_file_name[i++] = getc(fused_file)) != '\0')
-    ;
+  for (i = 0; (size_t)i < sizeof(unfused_file_name); i++) {
+    unfused_file_name[i] = getc(fused_file);
 
-  /* for () { */
-  /*   unfused_file_name[i] = fgetc(fused_file); */
-  /**/
-  /*   if (unfused_file_name[i] == '\0') { */
-  /*     break; */
-  /*   } */
-  /* } */
-
-  if (fread(&file_size, sizeof(file_size), 1, fused_file) < sizeof(file_size)) {
-    return E_BAD_DESTINATION;
+    if (unfused_file_name[i] == '\0') {
+      break;
+    }
   }
 
+  /* read file size */
+  if (fread(&file_size, sizeof(file_size), 1, fused_file) < 1) {
+    return E_BAD_SOURCE;
+  }
+
+  /* open file */
   unfused_file = fopen(unfused_file_name, "wb");
 
   if (unfused_file == NULL) {
     return E_BAD_DESTINATION;
   }
 
-  buffer = calloc(1, file_size);
+  /* allocate buffer to store it */
+  buffer = calloc(file_size, 1);
   if (buffer == NULL) {
     return E_NO_MEMORY;
   }
 
-  if (fread(&buffer, sizeof(char), file_size, fused_file) < (size_t)file_size) {
+  /* read 'file_size' bytes */
+  if (fread(buffer, 1, file_size, fused_file) < (size_t)file_size) {
     return E_BAD_SOURCE;
   }
 
-  fwrite(&buffer, sizeof(char), file_size, unfused_file);
-  free(buffer);
+  fwrite(buffer, 1, file_size, unfused_file);
   fclose(unfused_file);
+  free(buffer);
 
   return 0;
 }

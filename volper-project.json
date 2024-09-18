@@ -1,0 +1,12 @@
+{
+  "makeTargets": [
+    "all"
+  ],
+  "submissionName": "submission",
+  "sourceFiles": [
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp"
+  ]
+}
