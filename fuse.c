@@ -36,13 +36,6 @@ int fuse_file_append(const char *file_name, FILE *output_file) {
     position += fread(input_buffer + position, 1, (buffer_length - position),
                       input_file);
 
-    /* so pissed rn, yesterday wasnt working cause i think runing xxd fucked up
-     one of the files and it was comparing my output with a fucked up
-     testX_expected_output */
-
-    /* position += fread(input_buffer + position, 1, */
-    /*                   (buffer_length - position), input_file); */
-
     if (position >= buffer_length) {
       buffer_length <<= 1;
       input_buffer = realloc(input_buffer, 1 * buffer_length);
