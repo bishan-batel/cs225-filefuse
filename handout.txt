@@ -1,0 +1,84 @@
+The purpose of this assignment is to expose you to file I/O in C.
+
+Backstory (https://www.loc.gov/preservation/digital/formats/fdd/fdd000531.shtml)
+"A tar (tape archive) file format is an archive created by tar, a UNIX-based
+utility used to package files together for backup or distribution purposes. It
+contains multiple files (also known as a tarball) stored in an uncompressed
+format along with metadata about the archive. Tar files are not compressed
+archive files. They are often compressed with file compression utilities such
+as gzip or bzip2."
+
+We will implement a simplified version:
+given a list of files (an array of C-style strings) merge the files into
+a SINGLE file with the following structure: for each provided file, first
+save the name of the file, then the size of the file, then the file data,
+repeat as many time as there are files.
+
+Here is a diagram:
++-------------+--------+-----------+-------------+--------+-----------+....
+|filename1    |filesize|data ......|filename1    |filesize|data ......|....
+|\0 terminated| int    |           |\0 terminated| int    |           |....
++-------------+--------+-----------+-------------+--------+-----------+....
+
+Notes and assumptions:
+1) filenames are less then 256 characters 
+2) there is a NUL-character (ASCII code 0) between the name of the file and the size data. 
+3) do not worry about the size of the integer, both fusing and un-fusing will be done on the same system. Notice - you cannot assume it will be 4 or 8, but only that it will be the same. I.e. use "sizeof(int)".
+4) file data will starts immediately after the size information.
+
+Example:
+let's say the file is text file containing 26 letters of the alphabet and it is named "alphabet.txt".
+Notice that the size of the file on Linux will be 27 bytes, the last byte is the newline (28 on Windows - see lectures).
+After calling fuse on it we will have a file
+ 12345678901234567890123456789012345678901234
++--------------------------------------------+
+|alphabet.txt XXXXabcdefghijklmnopqrstuvwxyz |
++--------------------------------------------+
+where 
+1) 12 characters are in alphabet.txt
+2) 13'th character (represented by a space ) is the nonpritable \0
+3) XXXX represents the 4 byte integer 27 (file size)
+4) 27 bytes of the file data
+===============
+total: 12 + 1 + 4 + 27 = 44 bytes
+
+Using "od" tool:
+dvolper@dvolper-main: $ od -x --endian=big alphabet.fused
+0000000 616c 7068 6162 6574 2e74 7874 001b 0000
+0000020 0061 6263 6465 6667 6869 6a6b 6c6d 6e6f
+0000040 7071 7273 7475 7677 7879 7a0a
+
+or with corresponding characters (flag -c):
+dvolper@dvolper-main: $ od -x -c --endian=big alphabet.fused
+0000000    616c    7068    6162    6574    2e74    7874    001b    0000
+          a   l   p   h   a   b   e   t   .   t   x   t  \0 033  \0  \0
+0000020    0061    6263    6465    6667    6869    6a6b    6c6d    6e6f
+         \0   a   b   c   d   e   f   g   h   i   j   k   l   m   n   o
+0000040    7071    7273    7475    7677    7879    7a0a
+          p   q   r   s   t   u   v   w   x   y   z  \n
+0000054
+
+Make sure your code compiles with all targets (C, C++, mixed C/C++) see "Mixing" slides.
+
+Notes:
+1) When writing the name of the file you may be tempted to use text mode
+(NOT-binary) functionality (loke fgets etc). Do not do that - fgets is designed
+to work with text mode, and you do not know what may/will happen. Use fwrite to
+dump characters of the filename as they are, and then add \0 as terminator.
+
+2) Remember that end of file is NOT detected after you read the last byte, 
+it is detected AFTER you ATTEMPT to read one byte after the last. Example:
+reading file of size 40 using a buffer of size 10:
+while ( ! feof ) {
+  fread( 10 bytes );
+  print ( read <number of bytes> iteration <number> );
+}
+will produce:
+read 10 iteration 1
+read 10 iteration 2
+read 10 iteration 3
+read 0 iteration 4
+
+2-1) depending on the OS reading 2nd byte after the end of file may be a crash.
+
+3) Check out driver.cpp for C++ style I/O functionality.
