@@ -8,5 +8,6 @@
     ".cpp",
     ".h",
     ".hpp"
-  ]
+  ],
+  "testCount": "autodetect"
 }
